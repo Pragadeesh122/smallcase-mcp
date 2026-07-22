@@ -1,0 +1,44 @@
+name: CI
+
+# Runs on pushes and pull requests. This NEVER publishes — it only builds and
+# tests. It has read-only permissions and no access to the pypi environment.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build + verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Sync deps
+        run: uv sync
+      - name: Build + validate metadata
+        run: |
+          uv build
+          uvx twine check dist/*
+      - name: Server registers all 8 tools (offline)
+        run: |
+          uv run python - <<'PY'
+          import asyncio
+          from smallcase_mcp.server import mcp
+
+          async def main():
+              tools = await mcp.list_tools()
+              names = sorted(t.name for t in tools.tools)
+              expected = [
+                  "compare_smallcases", "get_rebalance_schedule", "get_smallcase",
+                  "list_collections", "list_managers", "search_mutual_funds",
+                  "search_smallcases", "search_stocks",
+              ]
+              assert names == expected, names
+              print("OK — tools:", names)
+
+          asyncio.run(main())
+          PY

@@ -1,0 +1,43 @@
+name: Publish to PyPI
+
+# Publishing happens ONLY when a maintainer publishes a GitHub Release.
+# Opening or merging a pull request never publishes.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Build sdist + wheel
+        run: uv build
+      - name: Validate metadata
+        run: uvx twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish to PyPI (trusted publishing)
+    needs: build
+    runs-on: ubuntu-latest
+    # Protected environment restricted to v* tags — the real gate.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/smallcase-mcp
+    permissions:
+      id-token: write # OIDC token for trusted publishing — NO API token stored anywhere
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
