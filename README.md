@@ -49,46 +49,56 @@ Example prompts once connected: *"find low-volatility gold smallcases under ₹5
 *"compare SCET_0005 and the top smallcase by returns"*, *"what's the rationale behind SCET_0005?"*,
 *"when does SCET_0005 next rebalance?"*, *"search bank stocks"*, *"show me energy mutual funds"*.
 
-## Setup
+## Install
 
-```bash
-git clone https://github.com/Pragadeesh122/smallcase-mcp.git
-cd smallcase-mcp
-uv sync
-```
-
-Verify it talks to the live API (14 checks) and speaks the MCP protocol:
-
-```bash
-uv run python tests/test_live.py
-uv run python tests/test_mcp_protocol.py
-```
-
-## Use it from an MCP client
-
-Run over stdio:
-
-```bash
-uv run smallcase-mcp
-```
+The package is on [PyPI](https://pypi.org/project/smallcase-mcp/) — no clone, no
+path, no API key. Any MCP client can launch it with `uvx`.
 
 ### Claude Code (one-liner)
 
 ```bash
-claude mcp add -s user smallcase -- uv --directory /path/to/smallcase-mcp run smallcase-mcp
+claude mcp add -s user smallcase -- uvx smallcase-mcp@latest
 ```
 
-### Claude Desktop config
+### Claude Desktop
 
 ```json
 {
   "mcpServers": {
     "smallcase": {
-      "command": "uv",
-      "args": ["--directory", "/path/to/smallcase-mcp", "run", "smallcase-mcp"]
+      "command": "uvx",
+      "args": ["smallcase-mcp@latest"]
     }
   }
 }
+```
+
+### Any other MCP client
+
+Point it at the stdio command:
+
+```bash
+uvx smallcase-mcp
+```
+
+`@latest` makes uvx resolve the newest release instead of reusing a cached one.
+
+## Development
+
+Only needed if you want to hack on the server itself:
+
+```bash
+git clone https://github.com/Pragadeesh122/smallcase-mcp.git
+cd smallcase-mcp
+uv sync
+uv run python tests/test_live.py          # live-API checks
+uv run python tests/test_mcp_protocol.py  # full MCP handshake over stdio
+```
+
+To run your local checkout as the server instead of the PyPI build:
+
+```bash
+claude mcp add -s user smallcase -- uv --directory /path/to/smallcase-mcp run smallcase-mcp
 ```
 
 ## Stack
