@@ -1,0 +1,21 @@
+[project]
+name = "smallcase-mcp"
+version = "0.1.0"
+description = "Unofficial, read-only MCP server exposing smallcase's public discovery data (catalog, returns, risk, rationale) to any LLM/agent."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "mcp>=1.2",
+    "httpx>=0.27",
+]
+
+[project.scripts]
+smallcase-mcp = "smallcase_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["smallcase_mcp"]
