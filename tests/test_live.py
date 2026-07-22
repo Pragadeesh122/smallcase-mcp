@@ -117,6 +117,41 @@ async def main() -> int:
         )
         print("      sample:", json.dumps(m0, ensure_ascii=False)[:220])
 
+    # 5) get_rebalance_schedule
+    reb = await client.get_rebalance_schedule(scid)
+    passed &= _ok(
+        f"get_rebalance_schedule({scid}) has schedule + dates",
+        bool(reb.get("rebalance_schedule")) and bool(reb.get("next_rebalance")),
+        f"{reb.get('rebalance_schedule')} | next={reb.get('next_rebalance')}",
+    )
+
+    # 6) search_stocks
+    stk = await client.search_stocks(query="bank", limit=5)
+    slist = stk.get("stocks") or []
+    passed &= _ok(
+        "search_stocks(query='bank') returns matching stocks",
+        len(slist) > 0 and all("bank" in (x.get("name", "") + x.get("sector", "")).lower() for x in slist),
+        f"{[x.get('ticker') for x in slist]}",
+    )
+
+    # 7) search_mutual_funds
+    mf = await client.search_mutual_funds(limit=5)
+    mflist = mf.get("mutual_funds") or []
+    passed &= _ok(
+        "search_mutual_funds returns funds with nav+amc",
+        len(mflist) > 0 and bool(mflist[0].get("name")) and mflist[0].get("nav") is not None,
+        f"{mflist[0].get('name')} | NAV={mflist[0].get('nav')}" if mflist else "none",
+    )
+
+    # 8) list_collections
+    col = await client.list_collections(limit=5)
+    clist = col.get("collections") or []
+    passed &= _ok(
+        "list_collections returns named collections",
+        len(clist) > 0 and bool(clist[0].get("name")),
+        f"{[c.get('name') for c in clist[:3]]}",
+    )
+
     print("\n" + ("ALL PASSED" if passed else "SOME FAILED"))
     return 0 if passed else 1
 

@@ -83,6 +83,49 @@ async def list_managers(page: int = 1, page_size: int = 20) -> dict:
     return await client.list_managers(page=page, page_size=page_size)
 
 
+@mcp.tool()
+async def get_rebalance_schedule(scid: str) -> dict:
+    """Rebalance cadence and last/next rebalance dates for a smallcase.
+
+    Args:
+        scid: The smallcase id, e.g. "SCET_0005".
+    """
+    return await client.get_rebalance_schedule(scid)
+
+
+@mcp.tool()
+async def search_stocks(query: str | None = None, limit: int = 20) -> dict:
+    """Search stocks in smallcase's public universe.
+
+    Args:
+        query: Case-insensitive match on name / ticker / sector (e.g. "HDFC", "bank").
+        limit: Max results to return (1-50).
+    """
+    return await client.search_stocks(query=query, limit=limit)
+
+
+@mcp.tool()
+async def search_mutual_funds(query: str | None = None, limit: int = 20) -> dict:
+    """Search mutual funds in smallcase's public universe.
+
+    Args:
+        query: Case-insensitive match on name / AMC / category (e.g. "DSP", "energy").
+        limit: Max results to return (1-50).
+    """
+    return await client.search_mutual_funds(query=query, limit=limit)
+
+
+@mcp.tool()
+async def list_collections(query: str | None = None, limit: int = 20) -> dict:
+    """List curated smallcase collections (themed groupings of smallcases).
+
+    Args:
+        query: Optional case-insensitive match on collection name / description.
+        limit: Max results to return (1-50).
+    """
+    return await client.list_collections(query=query, limit=limit)
+
+
 def main() -> None:
     """Run the MCP server over stdio."""
     mcp.run()

@@ -40,9 +40,13 @@ async def main() -> int:
             print("[PASS] handshake + tools/list:", names)
             assert names == [
                 "compare_smallcases",
+                "get_rebalance_schedule",
                 "get_smallcase",
+                "list_collections",
                 "list_managers",
+                "search_mutual_funds",
                 "search_smallcases",
+                "search_stocks",
             ], names
 
             result = await session.call_tool(

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import html
+import json
 import re
 from typing import Any
 
@@ -170,9 +171,7 @@ async def search_smallcases(
             {"key": "operationKeys.sc_volatility", "operator": "includes", "values": [mapped]}
         )
 
-    import json as _json
-
-    filter_params = [_json.dumps(f) for f in filters]
+    filter_params = [json.dumps(f) for f in filters]
     sort_obj = _SORT_MAP[sort]
     q = (query or "").lower().strip()
     limit = _clamp_page_size(limit)
@@ -188,7 +187,7 @@ async def search_smallcases(
             "filters": list(filter_params),
         }
         if sort_obj:
-            params["sort"] = _json.dumps(sort_obj)
+            params["sort"] = json.dumps(sort_obj)
         data = await _get("/explore/discover/v1/smallcase", params)
         items = (data.get("data") or {}).get("items") or []
         if not items:
@@ -349,3 +348,147 @@ async def list_managers(page: int = 1, page_size: int = 20) -> dict:
     payload = data.get("data") or {}
     items = payload.get("items") or []
     return {"count": len(items), "managers": [_shape_manager(it) for it in items]}
+
+
+# --------------------------------------------------------------------------- #
+# generic discovery scan (stocks / mutual funds / collections)
+# --------------------------------------------------------------------------- #
+def _text_match(it: dict, fields: tuple[str, ...], query: str) -> bool:
+    if not query:
+        return True
+    haystack = " ".join(str(it.get(f) or "") for f in fields).lower()
+    return query in haystack
+
+
+async def _discover_scan(
+    asset: str, path: str, query: str | None, limit: int, fields: tuple[str, ...]
+) -> list[dict]:
+    q = (query or "").lower().strip()
+    limit = _clamp_page_size(limit)
+    collected: list[dict] = []
+    for page in range(1, _SEARCH_SCAN_PAGES + 1):
+        data = await _get(
+            path,
+            {
+                "asset": asset,
+                "pageNo": page,
+                "pageSize": _SEARCH_PAGE_SIZE,
+                "useSemantic": "false",
+            },
+        )
+        items = (data.get("data") or {}).get("items") or []
+        if not items:
+            break
+        collected.extend(it for it in items if _text_match(it, fields, q))
+        if len(collected) >= limit:
+            break
+    return collected[:limit]
+
+
+# --------------------------------------------------------------------------- #
+# search_stocks
+# --------------------------------------------------------------------------- #
+def _shape_stock(it: dict) -> dict:
+    return {
+        "sid": it.get("sid"),
+        "name": it.get("name"),
+        "ticker": it.get("ticker"),
+        "sector": it.get("sector"),
+        "price": it.get("stockPrice"),
+        "cagr": it.get("cagr"),
+        "cagr_duration": it.get("cagrDuration"),
+        "return_1y": it.get("ret1y"),
+        "volatility": it.get("volatility"),
+        "slug": it.get("slug"),
+    }
+
+
+async def search_stocks(query: str | None = None, limit: int = 20) -> dict:
+    """Search stocks in smallcase's public universe by name / ticker / sector."""
+    items = await _discover_scan(
+        "stock", "/explore/discover/v1/stock", query, limit, ("name", "ticker", "sector")
+    )
+    return {"count": len(items), "query": query, "stocks": [_shape_stock(it) for it in items]}
+
+
+# --------------------------------------------------------------------------- #
+# search_mutual_funds
+# --------------------------------------------------------------------------- #
+def _shape_mf(it: dict) -> dict:
+    return {
+        "mf_id": it.get("mfId"),
+        "name": it.get("name"),
+        "amc": it.get("amc"),
+        "plan": it.get("plan"),
+        "option": it.get("option"),
+        "subsector": it.get("subsector"),
+        "nav": it.get("navClose"),
+        "cagr": it.get("cagr"),
+        "cagr_duration": it.get("cagrDuration"),
+        "return_1y": it.get("ret1y"),
+        "expense_ratio": it.get("expRatio"),
+        "volatility": it.get("volatility"),
+        "slug": it.get("slug"),
+    }
+
+
+async def search_mutual_funds(query: str | None = None, limit: int = 20) -> dict:
+    """Search mutual funds in smallcase's public universe by name / AMC / category."""
+    items = await _discover_scan(
+        "mutualfund",
+        "/explore/discover/v1/mutualfund",
+        query,
+        limit,
+        ("name", "amc", "subsector"),
+    )
+    return {"count": len(items), "query": query, "mutual_funds": [_shape_mf(it) for it in items]}
+
+
+# --------------------------------------------------------------------------- #
+# list_collections
+# --------------------------------------------------------------------------- #
+def _shape_collection(it: dict) -> dict:
+    return {
+        "cid": it.get("cid"),
+        "collection_id": it.get("collectionId"),
+        "name": it.get("collectionName"),
+        "description": it.get("description"),
+        "asset_count": it.get("assetCount"),
+        "asset_type": it.get("assetType"),
+    }
+
+
+async def list_collections(query: str | None = None, limit: int = 20) -> dict:
+    """List curated smallcase collections (themed groupings of smallcases)."""
+    items = await _discover_scan(
+        "collection",
+        "/explore/discover/v1/collection",
+        query,
+        limit,
+        ("collectionName", "description"),
+    )
+    return {
+        "count": len(items),
+        "query": query,
+        "collections": [_shape_collection(it) for it in items],
+    }
+
+
+# --------------------------------------------------------------------------- #
+# get_rebalance_schedule
+# --------------------------------------------------------------------------- #
+async def get_rebalance_schedule(scid: str) -> dict:
+    """Rebalance cadence and last/next rebalance dates for one smallcase."""
+    if not scid or not isinstance(scid, str):
+        raise SmallcaseError("scid must be a non-empty string, e.g. 'SCET_0005'")
+    data = await _get("/sam/smallcases/v2", {"scid": scid})
+    d = data.get("data") or data
+    info = d.get("info") or {}
+    return {
+        "scid": d.get("scid") or scid,
+        "name": info.get("name"),
+        "rebalance_schedule": info.get("rebalanceSchedule"),
+        "last_rebalanced": info.get("lastRebalanced"),
+        "next_rebalance": info.get("nextUpdate"),
+        "last_updated": info.get("updated"),
+    }

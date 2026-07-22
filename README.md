@@ -1,21 +1,26 @@
 # smallcase-mcp
 
-An **unofficial, read-only** [MCP](https://modelcontextprotocol.io) server that exposes
+> # ⚠️ UNOFFICIAL — this is NOT the official smallcase MCP
+>
+> This is an **independent, community-built** project. It is **NOT** built,
+> authorized, endorsed, sponsored, or supported by **smallcase**, it is **NOT**
+> "the smallcase MCP," and it uses **no official smallcase API**. "smallcase" is a
+> trademark of its respective owner. It reads smallcase's **public website
+> endpoints** (not the official [smallcase Gateway](https://developers.gateway.smallcase.com)
+> API), which can change or break at any time. Provided for informational/research
+> use only — **not investment advice**, and not an official data source. Some data
+> (notably **past returns**) is shown in smallcase's own UI behind a consent step
+> ("as per applicable guidelines"); use at your own discretion. All data © smallcase
+> and the respective publishers.
+
+A **read-only** [MCP](https://modelcontextprotocol.io) server that exposes
 [smallcase](https://www.smallcase.com)'s **public** discovery data — the catalog of
-published smallcases, their returns, risk metrics, rationale and rebalance schedule —
-to any LLM or agent (Claude Desktop, Claude Code, Cursor, …).
+published smallcases, their returns, risk metrics, rationale, rebalance schedule, plus
+stocks, mutual funds and curated collections — to any LLM or agent (Claude Desktop,
+Claude Code, Cursor, …).
 
 No API key. No browser. No login. Just clean HTTP over the endpoints the public
 smallcase.com website already calls for logged-out visitors.
-
-> ⚠️ **Disclaimer — read this.** This project is **not affiliated with, authorized by,
-> or endorsed by smallcase.** It is not the official
-> [smallcase Gateway](https://developers.gateway.smallcase.com) API. It calls
-> smallcase's public website endpoints, which can change or break at any time, and
-> some data (notably **past returns**) is presented in smallcase's own UI behind a
-> consent step ("as per applicable guidelines"). Use it for personal research at your
-> own discretion, and do not rely on it as financial advice or as an official data
-> source. All data © smallcase / the respective publishers.
 
 ## What it can and can't do
 
@@ -34,21 +39,29 @@ smallcase.com website already calls for logged-out visitors.
 | `search_smallcases(query, volatility, min_amount, max_amount, sort, limit)` | Search/screen published smallcases. Text match on name/description/publisher, `volatility` = low/medium/high, min/max investment, `sort` = popularity \| min_amount \| returns \| recently_rebalanced. |
 | `get_smallcase(scid)` | Full detail for one smallcase by SCID (e.g. `SCET_0005`): returns, risk, rationale, methodology. |
 | `compare_smallcases(scids)` | Side-by-side of 2–5 smallcases (returns / risk / min investment). |
+| `get_rebalance_schedule(scid)` | Rebalance cadence and last/next rebalance dates for a smallcase. |
 | `list_managers(page, page_size)` | List smallcase publishers / research houses. |
+| `search_stocks(query, limit)` | Search stocks in smallcase's public universe (name / ticker / sector). |
+| `search_mutual_funds(query, limit)` | Search mutual funds (name / AMC / category). |
+| `list_collections(query, limit)` | List curated smallcase collections (themed groupings). |
 
 Example prompts once connected: *"find low-volatility gold smallcases under ₹5000"*,
-*"compare SCET_0005 and the top smallcase by returns"*, *"what's the rationale behind SCET_0005?"*
+*"compare SCET_0005 and the top smallcase by returns"*, *"what's the rationale behind SCET_0005?"*,
+*"when does SCET_0005 next rebalance?"*, *"search bank stocks"*, *"show me energy mutual funds"*.
 
 ## Setup
 
 ```bash
+git clone https://github.com/Pragadeesh122/smallcase-mcp.git
+cd smallcase-mcp
 uv sync
 ```
 
-Verify it talks to the live API:
+Verify it talks to the live API (14 checks) and speaks the MCP protocol:
 
 ```bash
 uv run python tests/test_live.py
+uv run python tests/test_mcp_protocol.py
 ```
 
 ## Use it from an MCP client
@@ -59,14 +72,20 @@ Run over stdio:
 uv run smallcase-mcp
 ```
 
-### Claude Desktop / Claude Code config
+### Claude Code (one-liner)
+
+```bash
+claude mcp add -s user smallcase -- uv --directory /path/to/smallcase-mcp run smallcase-mcp
+```
+
+### Claude Desktop config
 
 ```json
 {
   "mcpServers": {
     "smallcase": {
       "command": "uv",
-      "args": ["--directory", "/Users/pragadeesh/Developer/Loops", "run", "smallcase-mcp"]
+      "args": ["--directory", "/path/to/smallcase-mcp", "run", "smallcase-mcp"]
     }
   }
 }
@@ -75,3 +94,7 @@ uv run smallcase-mcp
 ## Stack
 
 Python 3.11+ · [MCP Python SDK (FastMCP)](https://github.com/modelcontextprotocol/python-sdk) · `httpx`.
+
+## License
+
+[MIT](LICENSE). Not affiliated with smallcase. See the notice at the top of this file and in the LICENSE.

@@ -1,14 +1,26 @@
 [project]
 name = "smallcase-mcp"
 version = "0.1.0"
-description = "Unofficial, read-only MCP server exposing smallcase's public discovery data (catalog, returns, risk, rationale) to any LLM/agent."
+description = "UNOFFICIAL, read-only MCP server for smallcase's public discovery data (catalog, returns, risk, stocks, funds). Not affiliated with smallcase; not the official smallcase MCP."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
+authors = [{ name = "Pragadeesh122" }]
+keywords = ["mcp", "smallcase", "investing", "india", "llm", "agent", "unofficial"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Developers",
+]
 dependencies = [
     "mcp>=1.2",
     "httpx>=0.27",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Pragadeesh122/smallcase-mcp"
+Repository = "https://github.com/Pragadeesh122/smallcase-mcp"
+Issues = "https://github.com/Pragadeesh122/smallcase-mcp/issues"
 
 [project.scripts]
 smallcase-mcp = "smallcase_mcp.server:main"
