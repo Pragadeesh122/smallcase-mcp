@@ -25,11 +25,13 @@ async def search_smallcases(
     max_amount: float | None = None,
     sort: str = "popularity",
     limit: int = 20,
+    include_private: bool = False,
 ) -> dict:
     """Search / screen published smallcases from the public catalog.
 
     Returns each smallcase's name, publisher, CAGR, minimum investment,
-    volatility, monthly subscription price, and constituent count.
+    volatility, monthly subscription price, constituent count, and whether it
+    is private (closed to new investors).
 
     Args:
         query: Case-insensitive text match on name / description / publisher
@@ -40,6 +42,8 @@ async def search_smallcases(
         sort: One of "popularity" (default), "min_amount", "returns"
             (by CAGR, high to low), or "recently_rebalanced".
         limit: Max results to return (1-50).
+        include_private: Also return schemes closed to new investors (marked
+            private=true). Default False shows only open, discoverable ones.
     """
     return await client.search_smallcases(
         query=query,
@@ -48,6 +52,7 @@ async def search_smallcases(
         max_amount=max_amount,
         sort=sort,
         limit=limit,
+        include_private=include_private,
     )
 
 

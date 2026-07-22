@@ -1,6 +1,6 @@
 [project]
 name = "smallcase-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "UNOFFICIAL, read-only MCP server for smallcase's public discovery data (catalog, returns, risk, stocks, funds). Not affiliated with smallcase; not the official smallcase MCP."
 readme = "README.md"
 requires-python = ">=3.11"

@@ -100,7 +100,8 @@ _SORT_MAP: dict[str, dict | None] = {
     "returns": None,
 }
 
-_SEARCH_SCAN_PAGES = 6  # cap network calls when text/amount filtering client-side
+_SEARCH_SCAN_PAGES = 6  # default browse depth (240 items)
+_SEARCH_DEEP_SCAN_PAGES = 20  # full-catalog depth for query/filtered searches (~564 items)
 _SEARCH_PAGE_SIZE = 40  # the discover endpoint rejects pageSize > 40 with HTTP 422
 
 
@@ -123,6 +124,10 @@ def _shape_list_item(it: dict) -> dict:
         "launch_date": it.get("launchDate"),
         "asset_class": it.get("assetClass"),
         "currency": it.get("currency"),
+        # private=True means the scheme is closed to new investors and hidden
+        # from smallcase's public discovery (existing holders keep access).
+        "private": bool(it.get("private")),
+        "blocked": bool(it.get("blocked")),
     }
 
 
@@ -151,12 +156,16 @@ async def search_smallcases(
     max_amount: float | None = None,
     sort: str = "popularity",
     limit: int = 20,
+    include_private: bool = False,
 ) -> dict:
     """Search published smallcases with optional text, volatility, amount and sort.
 
     Server-side: mandatory published/active filters, volatility filter, and sort.
     Client-side: `query` substring match (name/description/publisher), amount range,
-    and returns-sort. Scans up to a few pages to fill `limit` when filtering.
+    returns-sort, and privacy filtering — smallcase's backend is inconsistent about
+    serving private (closed-to-new-investors) schemes, so we filter on each item's
+    `private` field deterministically. Query/filtered searches scan the full catalog;
+    plain browsing stays shallow.
     """
     sort = (sort or "popularity").lower()
     if sort not in _SORT_MAP:
@@ -177,8 +186,13 @@ async def search_smallcases(
     limit = _clamp_page_size(limit)
 
     collected: list[dict] = []
-    client_side = bool(q or min_amount is not None or max_amount is not None or sort == "returns")
-    for page in range(1, _SEARCH_SCAN_PAGES + 1):
+    seen: set[str] = set()
+    client_side = bool(
+        q or min_amount is not None or max_amount is not None
+        or sort == "returns" or include_private
+    )
+    max_pages = _SEARCH_DEEP_SCAN_PAGES if client_side else _SEARCH_SCAN_PAGES
+    for page in range(1, max_pages + 1):
         params: dict[str, Any] = {
             "asset": "smallcase",
             "pageNo": page,
@@ -192,14 +206,28 @@ async def search_smallcases(
         items = (data.get("data") or {}).get("items") or []
         if not items:
             break
-        collected.extend(it for it in items if _matches(it, q, min_amount, max_amount))
-        if not client_side and len(collected) >= limit:
-            break
+        for it in items:
+            scid = it.get("scid")
+            if scid in seen:  # pages can shift mid-scan; dedupe by scid
+                continue
+            if (include_private or not it.get("private")) and _matches(
+                it, q, min_amount, max_amount
+            ):
+                seen.add(scid)
+                collected.append(it)
         if sort != "returns" and len(collected) >= limit:
             break
 
     if sort == "returns":
         collected.sort(key=lambda it: (it.get("cagr") is None, -(it.get("cagr") or 0.0)))
+    elif sort == "min_amount":
+        # re-sort on the live value: the server sorts on a stale snapshot key
+        collected.sort(
+            key=lambda it: (
+                it.get("minInvestmentAmount") is None,
+                it.get("minInvestmentAmount") or 0.0,
+            )
+        )
 
     result = collected[:limit]
     return {
@@ -210,6 +238,7 @@ async def search_smallcases(
             "min_amount": min_amount,
             "max_amount": max_amount,
             "sort": sort,
+            "include_private": include_private,
         },
         "smallcases": [_shape_list_item(it) for it in result],
     }
@@ -223,10 +252,17 @@ def _shape_detail(d: dict, scid: str) -> dict:
     stats = d.get("stats") or {}
     returns = stats.get("returns") or {}
     ratios = stats.get("ratios") or {}
+    flags = d.get("flags") or {}
     return {
         "scid": d.get("scid") or scid,
         "name": info.get("name"),
         "publisher": info.get("publisherName"),
+        "flags": {
+            "active": flags.get("active"),
+            "blocked": flags.get("blocked"),
+            # private=True: closed to new investors, hidden from public discovery
+            "private": flags.get("private"),
+        },
         "type": info.get("type"),
         "short_description": info.get("shortDescription"),
         "launched": info.get("uploaded"),

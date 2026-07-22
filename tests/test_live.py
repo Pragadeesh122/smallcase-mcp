@@ -73,6 +73,32 @@ async def main() -> int:
         f"{[round(c, 2) for c in cagrs]}",
     )
 
+    # 1f) private schemes excluded by default
+    pub = await client.search_smallcases(query="supertron", limit=5)
+    passed &= _ok(
+        "default search excludes private schemes",
+        all(not h.get("private") for h in (pub.get("smallcases") or [])),
+        f"{len(pub.get('smallcases') or [])} results, none private",
+    )
+
+    # 1g) include_private finds closed-to-new-investors schemes
+    priv = await client.search_smallcases(query="supertron", include_private=True, limit=5)
+    phits = priv.get("smallcases") or []
+    passed &= _ok(
+        "include_private=True finds Supertrons (private)",
+        any(h.get("scid") == "OMNMO_0022" and h.get("private") for h in phits),
+        f"{[(h.get('scid'), h.get('private')) for h in phits]}",
+    )
+
+    # 1h) get_smallcase exposes flags
+    pdetail = await client.get_smallcase("OMNMO_0022")
+    fl = pdetail.get("flags") or {}
+    passed &= _ok(
+        "get_smallcase flags show private+active",
+        fl.get("private") is True and fl.get("active") is True,
+        str(fl),
+    )
+
     # 2) get_smallcase
     scid = first_scid or "SCET_0005"
     detail = await client.get_smallcase(scid)

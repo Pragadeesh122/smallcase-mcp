@@ -36,8 +36,8 @@ smallcase.com website already calls for logged-out visitors.
 
 | Tool | Description |
 |---|---|
-| `search_smallcases(query, volatility, min_amount, max_amount, sort, limit)` | Search/screen published smallcases. Text match on name/description/publisher, `volatility` = low/medium/high, min/max investment, `sort` = popularity \| min_amount \| returns \| recently_rebalanced. |
-| `get_smallcase(scid)` | Full detail for one smallcase by SCID (e.g. `SCET_0005`): returns, risk, rationale, methodology. |
+| `search_smallcases(query, volatility, min_amount, max_amount, sort, limit, include_private)` | Search/screen published smallcases. Text match on name/description/publisher, `volatility` = low/medium/high, min/max investment, `sort` = popularity \| min_amount \| returns \| recently_rebalanced. `include_private=true` also surfaces schemes **closed to new investors** (marked `private`), which smallcase hides from public discovery. |
+| `get_smallcase(scid)` | Full detail for one smallcase by SCID (e.g. `SCET_0005`): returns, risk, rationale, methodology, and `flags` (active / blocked / private). Works for private schemes too if you know the SCID. |
 | `compare_smallcases(scids)` | Side-by-side of 2–5 smallcases (returns / risk / min investment). |
 | `get_rebalance_schedule(scid)` | Rebalance cadence and last/next rebalance dates for a smallcase. |
 | `list_managers(page, page_size)` | List smallcase publishers / research houses. |
