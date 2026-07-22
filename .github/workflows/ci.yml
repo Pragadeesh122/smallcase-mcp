@@ -31,7 +31,7 @@ jobs:
 
           async def main():
               tools = await mcp.list_tools()
-              names = sorted(t.name for t in tools.tools)
+              names = sorted(t.name for t in tools)
               expected = [
                   "compare_smallcases", "get_rebalance_schedule", "get_smallcase",
                   "list_collections", "list_managers", "search_mutual_funds",
